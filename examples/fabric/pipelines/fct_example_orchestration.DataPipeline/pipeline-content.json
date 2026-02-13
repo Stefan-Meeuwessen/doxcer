@@ -1,0 +1,74 @@
+{
+  "name": "fct_example_orchestration",
+  "properties": {
+    "description": "Example orchestration pipeline that runs a Fabric notebook in a simple control flow.",
+    "activities": [
+      {
+        "name": "Kickoff_Wait",
+        "type": "Wait",
+        "dependsOn": [],
+        "typeProperties": {
+          "waitTimeInSeconds": 5
+        }
+      },
+      {
+        "name": "Run_fct_example_notebook",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "Kickoff_Wait",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+          "workspaceId": "11111111-1111-1111-1111-111111111111",
+          "parameters": {
+            "p_run_id": {
+              "value": "@pipeline().RunId",
+              "type": "Expression"
+            },
+            "p_trigger_time": {
+              "value": "@pipeline().TriggerTime",
+              "type": "Expression"
+            }
+          },
+          "sessionTag": "doxcer-example-session"
+        }
+      },
+      {
+        "name": "Finalize_Wait",
+        "type": "Wait",
+        "dependsOn": [
+          {
+            "activity": "Run_fct_example_notebook",
+            "dependencyConditions": [
+              "Completed"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "waitTimeInSeconds": 2
+        }
+      }
+    ],
+    "folder": {
+      "name": ""
+    },
+    "annotations": [
+      "example",
+      "doxcer",
+      "fabric",
+      "orchestration"
+    ]
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "name": "pl_fct_example_orchestration",
+  "type": "Microsoft.Synapse/workspaces/pipelines",
+  "properties": {
+    "description": "Example Synapse orchestration pipeline that executes notebook fct_example.",
+    "parameters": {
+      "p_load_date": {
+        "type": "String",
+        "defaultValue": "@{formatDateTime(utcnow(),'yyyy-MM-dd')}"
+      },
+      "p_force_full_load": {
+        "type": "Bool",
+        "defaultValue": false
+      }
+    },
+    "variables": {
+      "v_stage": {
+        "type": "String",
+        "defaultValue": "gold"
+      }
+    },
+    "activities": [
+      {
+        "name": "Kickoff_Wait",
+        "type": "Wait",
+        "dependsOn": [],
+        "policy": {
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "waitTimeInSeconds": 5
+        }
+      },
+      {
+        "name": "Run_fct_example_notebook",
+        "type": "SynapseNotebook",
+        "dependsOn": [
+          {
+            "activity": "Kickoff_Wait",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "userProperties": [
+          {
+            "name": "Domain",
+            "value": "Sales"
+          },
+          {
+            "name": "TargetLayer",
+            "value": "gold"
+          }
+        ],
+        "typeProperties": {
+          "notebook": {
+            "referenceName": "fct_example",
+            "type": "NotebookReference"
+          },
+          "parameters": {
+            "p_load_date": {
+              "value": "@pipeline().parameters.p_load_date",
+              "type": "Expression"
+            },
+            "p_force_full_load": {
+              "value": "@pipeline().parameters.p_force_full_load",
+              "type": "Expression"
+            },
+            "p_run_id": {
+              "value": "@pipeline().RunId",
+              "type": "Expression"
+            }
+          },
+          "snapshot": true,
+          "sparkPool": {
+            "referenceName": "spark3p1",
+            "type": "BigDataPoolReference"
+          },
+          "executorSize": "Small",
+          "conf": {
+            "spark.dynamicAllocation.enabled": "true",
+            "spark.dynamicAllocation.minExecutors": "2",
+            "spark.dynamicAllocation.maxExecutors": "4"
+          },
+          "numExecutors": 2
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureSynapseArtifactsLinkedService",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "PostSuccess_Wait",
+        "type": "Wait",
+        "dependsOn": [
+          {
+            "activity": "Run_fct_example_notebook",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+          "waitTimeInSeconds": 2
+        }
+      },
+      {
+        "name": "Fail_On_Notebook_Failure",
+        "type": "Fail",
+        "dependsOn": [
+          {
+            "activity": "Run_fct_example_notebook",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ],
+        "userProperties": [],
+        "typeProperties": {
+          "message": "Synapse notebook activity failed.",
+          "errorCode": "SYNAPSE_NOTEBOOK_FAILED"
+        }
+      }
+    ],
+    "folder": {
+      "name": "examples/synapse"
+    },
+    "annotations": [
+      "example",
+      "doxcer",
+      "synapse",
+      "orchestration"
+    ],
+    "lastPublishTime": "2026-02-13T00:00:00Z"
+  }
+}

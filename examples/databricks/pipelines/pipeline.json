@@ -1,0 +1,79 @@
+{
+  "name": "example_orchestration",
+  "format": "MULTI_TASK",
+  "max_concurrent_runs": 1,
+  "queue": {
+    "enabled": true
+  },
+  "tags": {
+    "domain": "sales",
+    "platform": "databricks",
+    "owner": "data-eng"
+  },
+  "email_notifications": {
+    "on_failure": [
+      "dataops@example.com"
+    ]
+  },
+  "job_clusters": [
+    {
+      "job_cluster_key": "shared_job_cluster",
+      "new_cluster": {
+        "spark_version": "14.3.x-scala2.12",
+        "node_type_id": "Standard_DS3_v2",
+        "num_workers": 2,
+        "runtime_engine": "STANDARD",
+        "data_security_mode": "SINGLE_USER",
+        "spark_conf": {
+          "spark.databricks.delta.optimizeWrite.enabled": "true",
+          "spark.databricks.delta.autoCompact.enabled": "true"
+        },
+        "custom_tags": {
+          "project": "doxcer-example",
+          "layer": "gold"
+        }
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "task_key": "prepare_parameters",
+      "description": "Validate run parameters before transformation task.",
+      "job_cluster_key": "shared_job_cluster",
+      "notebook_task": {
+        "notebook_path": "/Shared/doxcer/examples/databricks/00_prepare_parameters",
+        "base_parameters": {
+          "p_load_date": "2026-02-13",
+          "p_force_full_load": "false"
+        },
+        "source": "WORKSPACE"
+      },
+      "timeout_seconds": 900,
+      "max_retries": 1,
+      "min_retry_interval_millis": 300000,
+      "retry_on_timeout": true
+    },
+    {
+      "task_key": "run_fct_example_notebook",
+      "description": "Run bronze-to-gold transformation notebook.",
+      "depends_on": [
+        {
+          "task_key": "prepare_parameters"
+        }
+      ],
+      "job_cluster_key": "shared_job_cluster",
+      "notebook_task": {
+        "notebook_path": "/Shared/doxcer/examples/databricks/example",
+        "base_parameters": {
+          "p_load_date": "2026-02-13",
+          "p_force_full_load": "false"
+        },
+        "source": "WORKSPACE"
+      },
+      "timeout_seconds": 3600,
+      "max_retries": 1,
+      "min_retry_interval_millis": 300000,
+      "retry_on_timeout": true
+    }
+  ]
+}

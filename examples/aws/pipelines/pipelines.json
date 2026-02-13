@@ -1,0 +1,85 @@
+{
+  "Comment": "Example AWS Step Functions orchestration for doxcer tests.",
+  "StartAt": "KickoffWait",
+  "TimeoutSeconds": 7200,
+  "States": {
+    "KickoffWait": {
+      "Type": "Wait",
+      "Seconds": 5,
+      "Next": "RunNotebookDerivedGlueJob"
+    },
+    "RunNotebookDerivedGlueJob": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "glue-fct-example-from-notebook",
+        "Arguments": {
+          "--load_date.$": "$.p_load_date",
+          "--force_full_load.$": "States.Format('{}', $.p_force_full_load)",
+          "--target_table": "gold.fct_daily_customer_sales"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.Timeout",
+            "Glue.ConcurrentRunsExceededException",
+            "Glue.InternalServiceException"
+          ],
+          "IntervalSeconds": 30,
+          "BackoffRate": 2.0,
+          "MaxAttempts": 3
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "WorkflowFailed"
+        }
+      ],
+      "Next": "RunDataQualityGlueJob"
+    },
+    "RunDataQualityGlueJob": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "glue-fct-example-dq",
+        "Arguments": {
+          "--load_date.$": "$.p_load_date",
+          "--upstream_execution_id.$": "$$.Execution.Id"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.Timeout",
+            "Glue.ConcurrentRunsExceededException",
+            "Glue.InternalServiceException"
+          ],
+          "IntervalSeconds": 30,
+          "BackoffRate": 2.0,
+          "MaxAttempts": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "WorkflowFailed"
+        }
+      ],
+      "Next": "WorkflowSucceeded"
+    },
+    "WorkflowSucceeded": {
+      "Type": "Succeed"
+    },
+    "WorkflowFailed": {
+      "Type": "Fail",
+      "Error": "GlueJobFailed",
+      "Cause": "A Glue job in the orchestration failed."
+    }
+  }
+}
