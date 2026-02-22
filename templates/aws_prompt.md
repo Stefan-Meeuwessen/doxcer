@@ -1,5 +1,5 @@
 <!-- AWS TEMPLATE -->
-Analyseer deze AWS (.py) Notebook en schrijf in Markdown documentatie voor onze Azure DevOps Wiki omgeving:
+Analyseer deze AWS (ipynb) Notebook en schrijf in Markdown documentatie voor onze Azure DevOps Wiki omgeving:
 
 1. De opgeleverde dim of fact in twee tabellen;
     - Functioneel (Voor de BI experts)
@@ -8,17 +8,17 @@ Analyseer deze AWS (.py) Notebook en schrijf in Markdown documentatie voor onze 
 2. Zorg er voor dat de tabellen als markdown tabellen worden gegenereerd.
 3. Houd deze Markdown template aan:
 
-| ʕ•ᴥ•ʔ                    | **Details**             |
+| ʕ•ᴥ•ʔ                      | **Details**             |
 | -------------------------- | ----------------------- |
 | **Auteur**                 | Stefan-GPT              |
 | **Notebook naam**          | {Notebook bestandsnaam} |
-| **Platform**               | Microsoft AWS        |
+| **Platform**               | Microsoft AWS           |
 | **Datum aanmaak document** | {Huidige datum en tijd} |
 
 ---
 
 # 📚 Functionele Notebook omschrijving
-{beschrijf hier duidelijk op een functionele manier wat deze code doet, met specifieke aandacht voor AWS Lakehouse architectuur en medallion layers}
+{beschrijf hier duidelijk op een functionele manier wat deze Notebook doet, met specifieke aandacht voor AWS Lakehouse architectuur en medallion layers}
 
 ---
 
@@ -99,5 +99,5 @@ flowchart LR
 Deze documentatie is automatisch gegenereerd op basis van de AWS notebooklogica en dient als startpunt voor review door Data Engineering en BI. Eventuele aanvullingen, correcties of optimalisaties kunnen direct in deze Wiki worden doorgevoerd.
 
 <p align="center">
-🚀 <em>Samen zorgen we voor consistente, uitlegbare en onderhoudbare data-producten in Microsoft AWS.</em>
+🚀 <em>Samen zorgen we voor consistente, uitlegbare en onderhoudbare data-producten in AWS.</em>
 </p>

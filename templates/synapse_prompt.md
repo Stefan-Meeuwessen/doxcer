@@ -8,7 +8,7 @@ Analyseer deze Synapse (.json) Notebook en schrijf in Markdown documentatie voor
 2. Zorg er voor dat de tabellen als markdown tabellen worden gegenereerd.
 3. Houd deze Markdown template aan:
 
-| ʕ•ᴥ•ʔ                    | **Details**             |
+| ʕ•ᴥ•ʔ                      | **Details**             |
 | -------------------------- | ----------------------- |
 | **Auteur**                 | Stefan-GPT              |
 | **Notebook naam**          | {Notebook bestandsnaam} |
@@ -18,7 +18,7 @@ Analyseer deze Synapse (.json) Notebook en schrijf in Markdown documentatie voor
 ---
 
 # 📚 Functionele Notebook omschrijving
-{beschrijf hier duidelijk op een functionele manier wat deze code doet, met specifieke aandacht voor Synapse workspace en SQL Pool integratie}
+{beschrijf hier duidelijk op een functionele manier wat deze Notebook doet, met specifieke aandacht voor Synapse workspace en SQL Pool integratie}
 
 ---
 

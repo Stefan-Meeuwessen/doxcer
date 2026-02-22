@@ -1,13 +1,13 @@
-| ʕっ•ᴥ•ʔっ                    | **Details**             |
+| ʕっ•ᴥ•ʔっ                  | **Details**             |
 | -------------------------- | ----------------------- |
 | **Auteur**                 | Stefan-GPT              |
-| **Notebook naam**          | example.py               |
-| **Datum aanmaak document** | 2026-02-11 23:05:43     |
+| **Script naam**          | example.py |
+| **Datum aanmaak document** | 2026-02-21 18:25:44 |
 
 ---
 
 # 🐍 Functionele Notebook omschrijving
-Deze notebook voert een eenvoudige wiskundige berekening uit op basis van voorafbepaalde numerieke variabelen. De code definieert zes constante waarden (a t/m f) en berekent vervolgens een resultaat via de formule: (a + b) - (c * d / e) + f. Het resultaat wordt geprint als een beschrijvende string. Dit kan dienen als basis voor eenvoudige rekenmodellen of demonstraties in een data-analyse context, zonder interactie met externe data bronnen of databases.
+Deze code voert een eenvoudige wiskundige berekening uit op basis van een reeks vooraf gedefinieerde numerieke variabelen. Het berekent de uitkomst van de expressie `(a + b) - c * d / e + f`, waarbij de variabelen waarden vertegenwoordigen die logisch kunnen worden geïnterpreteerd als inputs voor een basisarithmetisch model, zoals een financiële of statistische simulatie. Het resultaat wordt geprint voor verificatie. Dit script dient als eenvoudig voorbeeld voor basisrekenkundige operaties in Python, zonder afhankelijkheden van externe data of databases.
 
 ---
 
@@ -23,25 +23,34 @@ flowchart LR
 
   %% ===== Bron =====
   subgraph S[Bron]
-    S1["Notebook variabelen<br/>(a=100, b=2, c=55,<br/>d=9, e=12, f=58)"]:::src
+
+    S1["Input variabelen<br/>(a=100, b=2, c=55,<br/>d=9, e=12, f=58)"]:::src
+
   end
 
   %% ===== Transformaties =====
   subgraph T[Transformaties]
-    T1["Berekening -<br/>(a + b) - (c * d / e) + f"]:::tf
+
+    T1["Berekening - Arithmetische<br/>expressie"]:::tf
+
   end
 
   %% ===== Checks (optioneel) =====
   subgraph Q[Checks]
+
+    Q1["Output print - Verificatie"]:::dq
+
   end
 
   %% ===== Output =====
   subgraph O[Output]
-    O1["Print resultaat<br/>(numerieke waarde)"]:::sink
+
+    O1["result variabele<br/>(numerieke waarde)"]:::sink
+
   end
 
   %% ===== Flow =====
-  S1 --> T1 --> O1
+  S1 --> T1 --> Q1 --> O1
 ```
 
 ---
@@ -50,7 +59,8 @@ flowchart LR
 
 | **Attribuutnaam** | **Definitie**                                                                                                     | **Omschrijving transformatie**                                                                                 |
 |-------------------|-------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
-| `result`          | Het berekende resultaat van de formule (a + b) - (c * d / e) + f, waarbij a t/m f numerieke constanten zijn.       | De variabelen worden direct in de formule toegepast met standaard rekenoperatoren (+, -, *, /). Geen verdere filtering of aggregatie; het resultaat is een enkel numeriek getal. |
+| `result`          | Het berekende resultaat van de arithmetische expressie `(a + b) - c * d / e + f`. Dit vertegenwoordigt de output van een basisrekenmodel, afgeleid uit de gegeven inputs. | De variabelen a, b, c, d, e en f worden gecombineerd volgens de operator precedence (vermenigvuldiging en deling vóór optelling en aftrekking). Het resultaat wordt direct berekend en opgeslagen zonder verdere wijzigingen. |
+|                   |                                                                                                                   |                                                                                                                |
 
 ---
 
@@ -58,7 +68,8 @@ flowchart LR
 
 | **Atribuut naam**         | **Data Type**     | **Key**       | **Bron**                   | **Brontabel(en)**             | **Bronattribuut(en)**     | **Voorwaarde**                                                                     |
 | ------------------------- | ----------------- | ------------- | -------------------------- | ----------------------------- | ------------------------- | ---------------------------------------------------------------------------------- |
-| `result`                  | float             | Nee           | Notebook code              | N.v.t. (lokale variabelen)    | a, b, c, d, e, f          | result = (a + b) - c * d / e + f; print(f"The result... {result}")                 |
+| `result`                  | float             | Nee           | Interne variabelen         | N.v.t.                        | a, b, c, d, e, f          | result = (a + b) - c * d / e + f; (Python volgt standaard operator precedence)     |
+|                           |                   |               |                            |                               |                           |                                                                                    |
 
 ---
 
@@ -67,5 +78,5 @@ flowchart LR
 Deze documentatie is automatisch gegenereerd op basis van de notebooklogica en dient als startpunt voor review door Data Engineering en BI. Eventuele aanvullingen, correcties of optimalisaties kunnen direct in deze Wiki worden doorgevoerd.
 
 <p align="center">
-🚀 <em>Samen zorgen we voor consistente, uitlegbare en onderhoudbare data-producten.</em>
+🚀 <em>Samen zorgen we voor consistente, uitlegbare en onderhoudbare code.</em>
 </p>

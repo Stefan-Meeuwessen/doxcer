@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////
 // AUTHOR   : Stefan B. J. Meeuwessen
 // CREATION : 2026-02-11
-// VERSION  : 0.0.1
+// VERSION  : 0.0.2
 //////////////////////////////////////////////////////////
 
 
@@ -10,7 +10,7 @@
 // ----------------------------
 
 // #![allow(unused)]
-#![allow(unused_doc_comments)]
+// #![allow(unused_doc_comments)]
 
 
 // ----------------------------
@@ -109,26 +109,29 @@ pub struct AzureDefinitionConfig<'a>
 
 fn find_fabric_sql_path(repo_root: &Path) -> PathBuf
 {
-    /// Type: Function.
-    /// Input:
-    /// - `repo_root`: Repository root path.
-    /// Output:
-    /// - `PathBuf`: `sql/fetch_fabric_definitions.sql`.
-    /// Exceptions:
-    /// - None.
+    //! Returns the path to the Fabric SQL definitions query file.
+    //!
+    //! # Inputs
+    //! - `repo_root`: Repository root path.
+    //!
+    //! # Returns
+    //! - Path to `sql/fetch_fabric_definitions.sql`.
 
     repo_root.join("sql").join("fetch_fabric_definitions.sql")
 }
 
 fn get_fabric_definition_db_credentials(config: &FabricDefinitionConfig) -> DefinitionFabricDbCredentials
 {
-    /// Type: Function.
-    /// Input:
-    /// - `config`: Fabric definition module runtime settings.
-    /// Output:
-    /// - `DefinitionFabricDbCredentials`: Fabric SQL endpoint/client/password.
-    /// Exceptions:
-    /// - Panics if required secrets are missing or empty.
+    //! Resolves Fabric SQL credentials from Azure Key Vault secrets.
+    //!
+    //! # Inputs
+    //! - `config`: Fabric definition runtime settings and secret names.
+    //!
+    //! # Returns
+    //! - Fabric SQL endpoint, client id, and password bundle.
+    //!
+    //! # Panics
+    //! - If required secrets are missing or empty.
 
     let fabric_sql_endpoint = get_secret_from_key_vault(
         config.akv_base_url,
@@ -169,15 +172,18 @@ pub fn fetch_definitions_from_fabric(
     config: &FabricDefinitionConfig,
 ) -> Result<(Vec<String>, Vec<Vec<String>>)>
 {
-    /// Type: Function.
-    /// Input:
-    /// - `table_prefix`: Prefix used for SQL `LIKE` filtering.
-    /// - `config`: Fabric definition module runtime settings.
-    /// Output:
-    /// - `Result<(Vec<String>, Vec<Vec<String>>)>`: Column names and rows as text.
-    /// Exceptions:
-    /// - Returns `Err(...)` for ODBC/connect/query/read failures.
-    /// - Panics if the `LIKE` pattern contains an interior null byte.
+    //! Fetches table definitions from Fabric SQL via ODBC.
+    //!
+    //! # Inputs
+    //! - `table_prefix`: Prefix used for SQL `LIKE` filtering.
+    //! - `config`: Fabric definition runtime settings.
+    //!
+    //! # Returns
+    //! - `Ok((column_names, rows))` when query execution succeeds.
+    //! - `Err(...)` for ODBC connection, query, or read failures.
+    //!
+    //! # Panics
+    //! - If the `LIKE` pattern contains an interior null byte.
 
     let fabric_definition_db_credentials = get_fabric_definition_db_credentials(config);
     let fabric_odbc_environment = Environment::new().context("[ERR] - Failed to create ODBC environment")?;
@@ -258,13 +264,13 @@ pub fn fetch_definitions_from_fabric(
 
 fn find_azure_sql_path(repo_root: &Path) -> PathBuf
 {
-    /// Type: Function.
-    /// Input:
-    /// - `repo_root`: Repository root path.
-    /// Output:
-    /// - `PathBuf`: `sql/fetch_azure_definitions.sql`.
-    /// Exceptions:
-    /// - None.
+    //! Returns the path to the Azure SQL definitions query file.
+    //!
+    //! # Inputs
+    //! - `repo_root`: Repository root path.
+    //!
+    //! # Returns
+    //! - Path to `sql/fetch_azure_definitions.sql`.
 
     // TODO: Confirm the Azure SQL query file name and path
 
@@ -273,13 +279,16 @@ fn find_azure_sql_path(repo_root: &Path) -> PathBuf
 
 fn get_azure_definition_db_credentials(config: &AzureDefinitionConfig) -> DefinitionAzureDbCredentials
 {
-    /// Type: Function.
-    /// Input:
-    /// - `config`: Azure definition module runtime settings.
-    /// Output:
-    /// - `DefinitionAzureDbCredentials`: Azure SQL endpoint/client/password.
-    /// Exceptions:
-    /// - Panics if required secrets are missing or empty.
+    //! Resolves Azure SQL credentials from Azure Key Vault secrets.
+    //!
+    //! # Inputs
+    //! - `config`: Azure definition runtime settings and secret names.
+    //!
+    //! # Returns
+    //! - Azure SQL endpoint, client id, and password bundle.
+    //!
+    //! # Panics
+    //! - If required secrets are missing or empty.
 
     // TODO: Implement Azure SQL credentials retrieval for definitions
 
@@ -322,12 +331,14 @@ pub fn fetch_definitions_from_azure(
     _config: &AzureDefinitionConfig,
 ) -> Result<(Vec<String>, Vec<Vec<String>>)>
 {
-    /// Type: Function.
-    /// Input:
-    /// - `table_prefix`: Prefix used for SQL `LIKE` filtering.
-    /// - `config`: Azure definition module runtime settings.
-    /// Output:
-    /// - `Result<(Vec<String>, Vec<Vec<String>>)>`: Column names and rows as text.
+    //! Placeholder for Azure SQL definition retrieval.
+    //!
+    //! # Inputs
+    //! - `_table_prefix`: Prefix used for SQL `LIKE` filtering.
+    //! - `_config`: Azure definition module runtime settings.
+    //!
+    //! # Returns
+    //! - `Err(...)` because this implementation is currently not available.
 
     // TODO: Implement Azure SQL fetch for a definitions table.
     Err(anyhow::anyhow!(
@@ -337,15 +348,15 @@ pub fn fetch_definitions_from_azure(
 
 pub fn format_definitions_as_markdown_table(col_names: &[String], rows: &[Vec<String>]) -> String
 {
-    /// Type: Function.
-    /// Input:
-    /// - `col_names`: Column names used as Markdown headers.
-    /// - `rows`: Definition rows.
-    /// Output:
-    /// - `String`: Markdown table text.
-    /// - Returns `[INF] - No definition rows returned.` when `col_names` is empty.
-    /// Exceptions:
-    /// - None expected under normal execution.
+    //! Formats query results as a Markdown table.
+    //!
+    //! # Inputs
+    //! - `col_names`: Column names used as Markdown headers.
+    //! - `rows`: Definition rows.
+    //!
+    //! # Returns
+    //! - Markdown table text.
+    //! - `[INF] - No definition rows returned.` when `col_names` is empty.
 
     if col_names.is_empty()
     {

@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////
 // AUTHOR   : Stefan B. J. Meeuwessen
 // CREATION : 2025-11-05
-// VERSION  : 3.0.0
+// VERSION  : 3.0.1
 //////////////////////////////////////////////////////////
 
 
@@ -19,7 +19,7 @@
 // ----------------------------
 
 // #![allow(unused)]
-#![allow(unused_doc_comments)]
+// #![allow(unused_doc_comments)]
 
 
 // ----------------------------
@@ -31,7 +31,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 // External Libraries
 use chrono::Utc;
@@ -122,6 +122,7 @@ struct ChoiceMessage
     /// Exceptions:
     /// - None.
 
+    role: Option<String>,
     content: String,
 }
 
@@ -184,6 +185,22 @@ struct EnvParameters
     odbc_max_byte_size: usize,
 }
 
+struct PromptProfileSpec
+{
+    /// Type: Struct.
+    /// Input:
+    /// - Compile-time profile metadata values.
+    /// Output:
+    /// - Single source of truth for profile names, selectors, and template stems.
+    /// Exceptions:
+    /// - None.
+
+    profile: PromptProfile,
+    name: &'static str,
+    selector_flags: &'static [&'static str],
+    template_stem: &'static str,
+}
+
 
 // ----------------------------
 // Data Enumerations
@@ -207,23 +224,13 @@ enum PromptProfile
     PowerBi,
     Aws,
     DataFactory,
+    Pipeline,
 }
 
-struct PromptProfileSpec
-{
-    /// Type: Struct.
-    /// Input:
-    /// - Compile-time profile metadata values.
-    /// Output:
-    /// - Single source of truth for profile names, selectors, and template stems.
-    /// Exceptions:
-    /// - None.
 
-    profile: PromptProfile,
-    name: &'static str,
-    selector_flags: &'static [&'static str],
-    template_stem: &'static str,
-}
+// ----------------------------
+// Static Selector Flags
+// ----------------------------
 
 static PROMPT_PROFILE_SPECS: &[PromptProfileSpec] = &[
     PromptProfileSpec
@@ -275,7 +282,22 @@ static PROMPT_PROFILE_SPECS: &[PromptProfileSpec] = &[
         selector_flags: &["-datafactory"],
         template_stem: "datafactory",
     },
+    PromptProfileSpec
+    {
+        profile: PromptProfile::Pipeline,
+        name: "pipeline",
+        selector_flags: &["-pipeline"],
+        template_stem: "pipeline",
+    },
 ];
+
+const USAGE_TEXT_TEMPLATE: &str = "[INF] - Usage:
+[INF] -   doxcer <path/to/notebook.py>
+[INF] -   doxcer [selector] <path/to/notebook.py>
+[INF] -   doxcer --help
+[INF] - Selectors:
+[INF] -   {selectors}
+[INF] - The path and selector can be provided in any order.";
 
 
 // ----------------------------
@@ -284,14 +306,6 @@ static PROMPT_PROFILE_SPECS: &[PromptProfileSpec] = &[
 
 static ENVCONFIG: Lazy<EnvParameters> = Lazy::new(||
 {
-    /// Type: Lazy initializer block.
-    /// Input:
-    /// - Environment variables from loaded env files.
-    /// Output:
-    /// - `EnvParameters` singleton.
-    /// Exceptions:
-    /// - Panics when required variables are missing (`expect(...)`).
-
     load_env();
     EnvParameters
     {
@@ -337,13 +351,17 @@ static ENVCONFIG: Lazy<EnvParameters> = Lazy::new(||
 
 fn load_env()
 {
-    /// Type: Function.
-    /// Input:
-    /// - None (uses `find_env_paths()`).
-    /// Output:
-    /// - Loads process environment variables from required `.env` files.
-    /// Exceptions:
-    /// - Panics if any required env file cannot be loaded.
+    //! Loads required `.env` files into process environment variables.
+    //!
+    //! # Inputs
+    //! - None. Uses [`find_env_paths`] internally.
+    //!
+    //! # Side Effects
+    //! - Sets process environment variables from each required env file.
+    //!
+    //! # Panics
+    //! - If a required env file is missing.
+    //! - If loading/parsing a required env file fails.
 
     for env_path in find_env_paths()
     {
@@ -389,7 +407,13 @@ fn load_env()
 
 fn has_repo_markers(path: &Path) -> bool
 {
-    // Candidate repository root check.
+    //! Checks whether a path looks like the project repository root.
+    //!
+    //! # Inputs
+    //! - `path`: Candidate directory path.
+    //!
+    //! # Returns
+    //! - `true` when required repository markers exist (`Cargo.toml`, `config/`, `templates/`).
 
     path.join("Cargo.toml").is_file()
         && path.join("config").is_dir()
@@ -398,7 +422,14 @@ fn has_repo_markers(path: &Path) -> bool
 
 fn parse_system_env_absolute_path(system_env_path: &Path) -> Option<PathBuf>
 {
-    // Parse ABSOLUTE_DOXCER_PATH from config/system.env.
+    //! Extracts `ABSOLUTE_DOXCER_PATH` from `config/system.env`.
+    //!
+    //! # Inputs
+    //! - `system_env_path`: Path to the system env mapping file.
+    //!
+    //! # Returns
+    //! - `Some(PathBuf)` when a non-empty `ABSOLUTE_DOXCER_PATH=` value is found.
+    //! - `None` when the file cannot be read or the key/value is missing or empty.
 
     let content = fs::read_to_string(system_env_path).ok()?;
     for line in content.lines()
@@ -428,7 +459,15 @@ fn parse_system_env_absolute_path(system_env_path: &Path) -> Option<PathBuf>
 
 fn find_repo_root_in_ancestors(start: &Path) -> Option<PathBuf>
 {
-    // Walk parent directories and check direct markers or mapped system.env.
+    //! Walks ancestor directories to locate a valid repository root.
+    //!
+    //! # Inputs
+    //! - `start`: Starting path used for ancestor traversal.
+    //!
+    //! # Returns
+    //! - `Some(PathBuf)` when a directory with repository markers is found directly.
+    //! - `Some(PathBuf)` when a valid mapped root is found via `config/system.env`.
+    //! - `None` when no valid root can be resolved.
 
     for ancestor in start.ancestors()
     {
@@ -452,13 +491,16 @@ fn find_repo_root_in_ancestors(start: &Path) -> Option<PathBuf>
 
 fn find_repo_root_path() -> PathBuf
 {
-    /// Type: Function.
-    /// Input:
-    /// - None.
-    /// Output:
-    /// - `PathBuf`: Repository root path.
-    /// Exceptions:
-    /// - Panics if no valid root can be discovered.
+    //! Resolves the repository root path for runtime resources.
+    //!
+    //! # Inputs
+    //! - None.
+    //!
+    //! # Returns
+    //! - Repository root path that contains expected project markers.
+    //!
+    //! # Panics
+    //! - If no valid repository root can be discovered.
 
     if let Ok(value) = env::var("ABSOLUTE_DOXCER_PATH")
     {
@@ -499,17 +541,20 @@ fn find_repo_root_path() -> PathBuf
 
 fn find_env_paths() -> Vec<PathBuf>
 {
-    /// Type: Function.
-    /// Input:
-    /// - None.
-    /// Output:
-    /// - `Vec<PathBuf>` with paths, in order:
-    ///   - `config/system.env`
-    ///   - `config/definitions.env`
-    ///   - `config/azure_key_vault.env`
-    ///   - `config/ai_model.env`
-    /// Exceptions:
-    /// - Panics if repository root discovery fails.
+    //! Returns required environment file paths in load order.
+    //!
+    //! # Inputs
+    //! - None.
+    //!
+    //! # Returns
+    //! - Paths, in order:
+    //!   - `config/system.env`
+    //!   - `config/definitions.env`
+    //!   - `config/azure_key_vault.env`
+    //!   - `config/ai_model.env`
+    //!
+    //! # Panics
+    //! - If repository root discovery fails.
     
     let repo = find_repo_root_path();
     let config_dir = repo.join("config");
@@ -524,32 +569,38 @@ fn find_env_paths() -> Vec<PathBuf>
 
 fn print_usage()
 {
-    /// Type: Function.
-    /// Input:
-    /// - None.
-    /// Output:
-    /// - Writes usage text to STDERR.
-    /// Exceptions:
-    /// - None.
+    //! Prints CLI usage instructions to stderr.
 
-    eprintln!("[INF] - Usage:");
-    eprintln!("[INF] -   doxcer <path/to/notebook.py>");
-    eprintln!("[INF] -   doxcer [selector] <path/to/notebook.py>");
-    eprintln!("[INF] - Selectors:");
+    eprintln!("{}", usage_text());
+}
+
+fn usage_text() -> String
+{
+    //! Builds CLI usage instructions with the current selector list.
+
     let selector_display = supported_selector_list().replace(", ", " | ");
-    eprintln!("[INF] -   {}", selector_display);
-    eprintln!("[INF] - The path and selector can be provided in any order.");
+    USAGE_TEXT_TEMPLATE.replace("{selectors}", &selector_display)
+}
+
+fn is_help_requested(args: &[String]) -> bool
+{
+    //! Returns `true` when CLI input is exactly `doxcer --help`.
+
+    args.len() == 2 && args[1] == "--help"
 }
 
 fn prompt_profile_spec(profile: PromptProfile) -> &'static PromptProfileSpec
 {
-    /// Type: Function.
-    /// Input:
-    /// - `profile`: Prompt profile variant.
-    /// Output:
-    /// - `&'static PromptProfileSpec`: Profile metadata entry from registry.
-    /// Exceptions:
-    /// - Panics when profile metadata is missing.
+    //! Returns the metadata entry for a prompt profile.
+    //!
+    //! # Inputs
+    //! - `profile`: Prompt profile variant.
+    //!
+    //! # Returns
+    //! - Profile metadata entry from the static registry.
+    //!
+    //! # Panics
+    //! - If metadata for the given profile is missing.
 
     PROMPT_PROFILE_SPECS
         .iter()
@@ -559,13 +610,14 @@ fn prompt_profile_spec(profile: PromptProfile) -> &'static PromptProfileSpec
 
 fn parse_profile_selector(arg: &str) -> Option<PromptProfile>
 {
-    /// Type: Function.
-    /// Input:
-    /// - `arg`: Raw CLI token.
-    /// Output:
-    /// - `Option<PromptProfile>`: Parsed selector profile when recognized.
-    /// Exceptions:
-    /// - None.
+    //! Parses a CLI token as a prompt selector flag.
+    //!
+    //! # Inputs
+    //! - `arg`: Raw CLI token.
+    //!
+    //! # Returns
+    //! - `Some(profile)` when the token matches a known selector.
+    //! - `None` when the token is not a known selector.
 
     for spec in PROMPT_PROFILE_SPECS
     {
@@ -580,26 +632,26 @@ fn parse_profile_selector(arg: &str) -> Option<PromptProfile>
 
 fn profile_selector_name(profile: PromptProfile) -> &'static str
 {
-    /// Type: Function.
-    /// Input:
-    /// - `profile`: Prompt profile variant.
-    /// Output:
-    /// - `&'static str`: Canonical selector name without leading `-`.
-    /// Exceptions:
-    /// - None.
+    //! Returns the canonical selector name for a prompt profile.
+    //!
+    //! # Inputs
+    //! - `profile`: Prompt profile variant.
+    //!
+    //! # Returns
+    //! - Canonical selector name without a leading `-`.
 
     prompt_profile_spec(profile).name
 }
 
 fn supported_selector_list() -> String
 {
-    /// Type: Function.
-    /// Input:
-    /// - None.
-    /// Output:
-    /// - `String`: Comma-separated list of supported canonical selectors.
-    /// Exceptions:
-    /// - None.
+    //! Builds a comma-separated list of supported selector flags.
+    //!
+    //! # Inputs
+    //! - None.
+    //!
+    //! # Returns
+    //! - Comma-separated selector list in registry order.
 
     PROMPT_PROFILE_SPECS
         .iter()
@@ -610,13 +662,14 @@ fn supported_selector_list() -> String
 
 fn parse_cli_args(args: &[String]) -> std::result::Result<CliArgs, String>
 {
-    /// Type: Function.
-    /// Input:
-    /// - `args`: Raw process arguments.
-    /// Output:
-    /// - `Result<CliArgs, String>`: Parsed path/profile or validation message.
-    /// Exceptions:
-    /// - None (returns `Err` instead of panicking).
+    //! Parses and validates CLI arguments.
+    //!
+    //! # Inputs
+    //! - `args`: Raw process arguments including executable name.
+    //!
+    //! # Returns
+    //! - `Ok(CliArgs)` when the path/selectors are valid.
+    //! - `Err(String)` with a user-facing validation message.
 
     if args.is_empty()
     {
@@ -686,13 +739,17 @@ fn parse_cli_args(args: &[String]) -> std::result::Result<CliArgs, String>
 
 fn find_prompt_path(profile: &PromptProfile) -> PathBuf
 {
-    /// Type: Function.
-    /// Input:
-    /// - `profile`: Prompt profile selector.
-    /// Output:
-    /// - `PathBuf`: Path to prompt template (profile template or default fallback).
-    /// Exceptions:
-    /// - Panics if repository root discovery fails.
+    //! Resolves the prompt template path for the selected profile.
+    //!
+    //! # Inputs
+    //! - `profile`: Prompt profile selector.
+    //!
+    //! # Returns
+    //! - Profile-specific template path when it exists.
+    //! - Default template path when profile template is missing.
+    //!
+    //! # Panics
+    //! - If repository root discovery fails.
 
     let prompt_file_stem = prompt_profile_spec(*profile).template_stem;
 
@@ -712,13 +769,10 @@ fn find_prompt_path(profile: &PromptProfile) -> PathBuf
 
 fn find_context_path() -> PathBuf
 {
-    /// Type: Function.
-    /// Input:
-    /// - None.
-    /// Output:
-    /// - `PathBuf`: `templates/context.md`.
-    /// Exceptions:
-    /// - Panics if repository root discovery fails.
+    //! Returns the path to `templates/context.md`.
+    //!
+    //! # Panics
+    //! - If repository root discovery fails.
     
     let repo = find_repo_root_path();
     repo.join("templates")
@@ -727,13 +781,10 @@ fn find_context_path() -> PathBuf
 
 fn find_docs_path() -> PathBuf
 {
-    /// Type: Function.
-    /// Input:
-    /// - None.
-    /// Output:
-    /// - `PathBuf`: `docs/newly-documented`.
-    /// Exceptions:
-    /// - Panics if repository root discovery fails.
+    //! Returns the output directory for generated Markdown files.
+    //!
+    //! # Panics
+    //! - If repository root discovery fails.
 
     let repo = find_repo_root_path();
     repo.join("docs")
@@ -742,13 +793,13 @@ fn find_docs_path() -> PathBuf
 
 fn is_metadata_line(line: &str) -> bool
 {
-    /// Type: Function.
-    /// Input:
-    /// - `line`: Single notebook source line.
-    /// Output:
-    /// - `bool`: `true` when line starts with `# METADATA`, `# META`, or `# CELL`.
-    /// Exceptions:
-    /// - None.
+    //! Checks whether a source line is notebook metadata.
+    //!
+    //! # Inputs
+    //! - `line`: Single notebook source line.
+    //!
+    //! # Returns
+    //! - `true` when line starts with `# METADATA`, `# META`, or `# CELL`.
 
     let trimmed = line.trim_start();
     trimmed.starts_with("# METADATA")
@@ -758,13 +809,13 @@ fn is_metadata_line(line: &str) -> bool
 
 fn strip_notebook_metadata(source: &str) -> String
 {
-    /// Type: Function.
-    /// Input:
-    /// - `source`: Raw notebook source text.
-    /// Output:
-    /// - `String`: Source text without metadata lines.
-    /// Exceptions:
-    /// - None.
+    //! Removes metadata lines from notebook source text.
+    //!
+    //! # Inputs
+    //! - `source`: Raw notebook source text.
+    //!
+    //! # Returns
+    //! - Source text without metadata lines.
 
     let mut cleaned_lines: Vec<&str> = Vec::new();
 
@@ -781,13 +832,13 @@ fn strip_notebook_metadata(source: &str) -> String
 
 fn collapse_blank_lines(source: &str) -> String
 {
-    /// Type: Function.
-    /// Input:
-    /// - `source`: Multi-line text.
-    /// Output:
-    /// - `String`: Text with consecutive blank lines collapsed.
-    /// Exceptions:
-    /// - None.
+    //! Collapses consecutive blank lines into a single blank line.
+    //!
+    //! # Inputs
+    //! - `source`: Multi-line text.
+    //!
+    //! # Returns
+    //! - Text with consecutive blank lines collapsed.
 
     let mut result: Vec<&str> = Vec::new();
     let mut previous_was_blank = false;
@@ -814,16 +865,76 @@ fn collapse_blank_lines(source: &str) -> String
     result.join("\n")
 }
 
+fn is_assistant_role(role: Option<&str>) -> bool
+{
+    //! Returns `true` when a response role is missing or explicitly assistant.
+    //!
+    //! # Inputs
+    //! - `role`: Optional response role value from the API payload.
+    //!
+    //! # Returns
+    //! - `true` for `None` to preserve compatibility with payloads that omit role.
+    //! - `true` for case-insensitive `"assistant"`.
+    //! - `false` for any other role.
+
+    role
+        .map(|value| value.eq_ignore_ascii_case("assistant"))
+        .unwrap_or(true)
+}
+
+fn looks_like_internal_prompt(content: &str) -> bool
+{
+    //! Heuristically detects when model output appears to be a full prompt echo.
+    //!
+    //! # Inputs
+    //! - `content`: Assistant text content.
+    //!
+    //! # Returns
+    //! - `true` when content contains all internal prompt envelope markers.
+
+    content.contains("Current date time:")
+        && content.contains("Notebook filename:")
+        && content.contains("Documentation template:")
+        && content.contains("Code:")
+}
+
+fn env_flag_enabled(name: &str) -> bool
+{
+    //! Reads a boolean-like environment flag.
+    //!
+    //! # Inputs
+    //! - `name`: Environment variable name.
+    //!
+    //! # Returns
+    //! - `true` for values: `1`, `true`, `yes`, `on` (case-insensitive).
+    //! - `false` otherwise.
+
+    match env::var(name)
+    {
+        Ok(value) =>
+        {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        }
+        Err(_) => false,
+    }
+}
+
 fn determine_output_names(input_path: &Path) -> (String, String)
 {
-    /// Type: Function.
-    /// Input:
-    /// - `input_path`: Input notebook path.
-    /// Output:
-    /// - `(String, String)`: `(output_file_name, output_file_name_ext)`.
-    /// - Uses parent directory name for `notebook-content.py`.
-    /// Exceptions:
-    /// - Panics if `input_path` has no filename.
+    //! Derives output names from the input notebook path.
+    //!
+    //! # Inputs
+    //! - `input_path`: Input notebook path.
+    //!
+    //! # Returns
+    //! - `(output_file_name, output_file_name_ext)`.
+    //! - Uses parent directory name when file is `notebook-content.py`.
+    //!
+    //! # Panics
+    //! - If `input_path` has no filename.
 
     let filename_os = input_path
         .file_name()
@@ -867,19 +978,31 @@ fn determine_output_names(input_path: &Path) -> (String, String)
 
 fn main()
 {
-    /// Type: Entry point function.
-    /// Input:
-    /// - CLI args (`doxcer <path>`, optional `-fabric` or `-synapse`).
-    /// - Environment variables from split env files.
-    /// Output:
-    /// - Prints generated Markdown.
-    /// - Writes output Markdown to `docs/newly-documented`.
-    /// Exceptions:
-    /// - Exits with non-zero code for invalid CLI args.
-    /// - Panics on unrecoverable runtime/configuration errors.
+    //! Application entry point for generating notebook documentation.
+    //!
+    //! # Inputs
+    //! - CLI args: `doxcer [selector] <path/to/notebook.py>`.
+    //! - Environment variables from the split env files.
+    //!
+    //! # Side Effects
+    //! - Calls the Azure AI Foundry chat endpoint.
+    //! - Prints generated Markdown to stdout.
+    //! - Writes output Markdown to `docs/newly-documented`.
+    //!
+    //! # Process Exit
+    //! - Exits with status code `1` for invalid CLI arguments.
+    //!
+    //! # Panics
+    //! - On unrecoverable runtime or configuration errors.
 
     // CLI args
     let args: Vec<String> = env::args().collect();
+    if is_help_requested(&args)
+    {
+        print_usage();
+        process::exit(0);
+    }
+
     let cli_args = match parse_cli_args(&args)
     {
         Ok(parsed) => parsed,
@@ -892,6 +1015,11 @@ fn main()
     };
 
     let file_path = &cli_args.file_path;
+    println!(
+        "[INF] - Processing notebook '{}' with '{}' profile.",
+        file_path,
+        profile_selector_name(cli_args.profile)
+    );
 
     // Validate AI & Key Vault config
     if !ENVCONFIG.ai_enabled == true
@@ -917,16 +1045,25 @@ fn main()
     let (output_file_name, output_file_name_ext) = determine_output_names(input_path);
 
     // Fetch notebook content & clean
+    println!("[INF] - Loading notebook from {}", file_path);
+    let notebook_load_started_at = Instant::now();
     let notebook_content = fs::read_to_string(file_path)
         .unwrap_or_else(|_| panic!("[ERR] - Failed to read file {}", file_path));
     let cleaned_notebook = collapse_blank_lines(&strip_notebook_metadata(&notebook_content));
+    println!(
+        "[SUC] - Notebook loaded and cleaned in {:.1}s.",
+        notebook_load_started_at.elapsed().as_secs_f64()
+    );
 
     // Load prompt & context templates
+    println!("[INF] - Resolving prompt and context templates");
     let prompt_path = find_prompt_path(&cli_args.profile);
+    println!("[INF] - Using prompt template {}", prompt_path.display());
     let prompt_content = fs::read_to_string(&prompt_path)
         .unwrap_or_else(|_| panic!("[ERR] - Failed to read prompt template {}", prompt_path.display()));
     let context_content = fs::read_to_string(find_context_path())
         .expect("[ERR] - Failed to read context template");
+    println!("[SUC] - Prompt and context templates loaded");
 
     // Determine definitions
     let fabric_definitions = if ENVCONFIG.definition_database_enabled == true
@@ -955,6 +1092,11 @@ fn main()
             };
 
             // Fetch from Fabric SQL
+            println!(
+                "[INF] - Querying Fabric definitions for notebook '{}'",
+                output_file_name
+            );
+            let definition_query_started_at = Instant::now();
             match fetch_definitions::fetch_definitions_from_fabric(
                 &output_file_name,
                 &fabric_definition_config,
@@ -962,17 +1104,28 @@ fn main()
             {
                 Ok((cols, rows)) if !cols.is_empty() && !rows.is_empty() =>
                 {
+                    println!(
+                        "[SUC] - Definitions query completed in {:.1}s.",
+                        definition_query_started_at.elapsed().as_secs_f64()
+                    );
                     println!("[SUC] - Definitions found: {} row(s).", rows.len());
                     fetch_definitions::format_definitions_as_markdown_table(&cols, &rows)
                 }
                 Ok(_) =>
                 {
+                    println!(
+                        "[INF] - Definitions query completed in {:.1}s.",
+                        definition_query_started_at.elapsed().as_secs_f64()
+                    );
                     println!("[INF] - No definitions found for this notebook.");
                     "[INF] - No definitions loaded (query returned no rows).".to_string()
                 }
                 Err(e) =>
                 {
-                    eprintln!("[WRN] - Failed to fetch definitions from Fabric SQL: {e}");
+                    eprintln!(
+                        "[WRN] - Definitions query failed after {:.1}s: {e}",
+                        definition_query_started_at.elapsed().as_secs_f64()
+                    );
                     "[INF] - No definitions loaded (query failed).".to_string()
                 }
             }
@@ -995,6 +1148,7 @@ fn main()
     };
 
     // Build prompt
+    println!("[INF] - Building prompt payload");
     let current_datetime = Utc::now().with_timezone(&Amsterdam)
         .format("%Y-%m-%d %H:%M:%S")
         .to_string();
@@ -1008,11 +1162,14 @@ fn main()
         cleaned_notebook
     );
 
-    // TODO: DELETE this debug print
-    println!("Request:\n{}\n\n\n\n", prompt);
-
     // Call API
+    println!("[INF] - Resolving API key from Azure Key Vault");
+    let key_vault_lookup_started_at = Instant::now();
     let api_key = fetch_secrets::get_secret_from_key_vault(&ENVCONFIG.akv_base_url, &ENVCONFIG.akv_secret_ai);
+    println!(
+        "[SUC] - API key resolved in {:.1}s.",
+        key_vault_lookup_started_at.elapsed().as_secs_f64()
+    );
     let api_url = format!(
         "{base}/models/chat/{task}?api-version={version}",
         base = ENVCONFIG.ai_base_url,
@@ -1035,6 +1192,13 @@ fn main()
         .expect("Failed to build HTTP client");
 
     // Handle response
+    println!(
+        "[INF] - Submitting API request for task '{}' (model '{}')",
+        ENVCONFIG.ai_task,
+        ENVCONFIG.ai_model
+    );
+    println!("[INF] - Waiting for API response (timeout: 300s)");
+    let api_request_started_at = Instant::now();
     match client.post(&api_url)
         .header("Content-Type", "application/json")
         .header("api-key", api_key)
@@ -1043,12 +1207,25 @@ fn main()
     {
         Ok(res) if res.status().is_success() =>
         {
+            println!(
+                "[SUC] - API request completed in {:.1}s with status {}.",
+                api_request_started_at.elapsed().as_secs_f64(),
+                res.status()
+            );
             let body_text = res.text().unwrap_or_default();
+            println!("[INF] - Parsing API response");
             match serde_json::from_str::<ChatResponse>(&body_text)
             {
                 Ok(chat_response) =>
                 {
-                    if let Some(first_choice) = chat_response.choices.first()
+                    println!(
+                        "[SUC] - API response parsed ({} choice(s)).",
+                        chat_response.choices.len()
+                    );
+                    if let Some(first_choice) = chat_response
+                        .choices
+                        .iter()
+                        .find(|choice| is_assistant_role(choice.message.role.as_deref()))
                     {
                         let content = &first_choice.message.content;
                         if content.trim().is_empty()
@@ -1057,7 +1234,11 @@ fn main()
                             return;
                         }
 
-                        println!("{}", content);
+                        if looks_like_internal_prompt(content)
+                        {
+                            eprintln!("[WRN] - API response appears to echo the internal prompt. Output suppressed.");
+                            return;
+                        }
 
                         // Save to wiki
                         let mut output_path = find_docs_path();
@@ -1082,19 +1263,43 @@ fn main()
                     }
                     else
                     {
-                        println!("[INF] - No 'choices' found in response.");
+                        println!("[INF] - No assistant 'choices' found in response.");
                     }
                 }
                 Err(e) =>
                 {
-                    eprintln!("[ERR] - Failed to deserialize response: {e}\n[INF] - Raw response: {body_text}");
+                    if env_flag_enabled("DOXCER_DEBUG_API")
+                    {
+                        eprintln!("[ERR] - Failed to deserialize response: {e}\n[INF] - Raw response: {body_text}");
+                    }
+                    else
+                    {
+                        eprintln!("[ERR] - Failed to deserialize response: {e}");
+                        eprintln!("[INF] - Set DOXCER_DEBUG_API=true to print the raw API response body.");
+                    }
                 }
             }
         }
         Ok(res) =>
         {
-            eprintln!("[ERR] - API request failed: {}", res.text().unwrap_or_default());
+            let status = res.status();
+            let body_text = res.text().unwrap_or_default();
+            let elapsed = api_request_started_at.elapsed().as_secs_f64();
+
+            if env_flag_enabled("DOXCER_DEBUG_API")
+            {
+                eprintln!("[ERR] - API request failed after {elapsed:.1}s ({status}): {body_text}");
+            }
+            else
+            {
+                eprintln!("[ERR] - API request failed after {elapsed:.1}s with status: {status}");
+                eprintln!("[INF] - Set DOXCER_DEBUG_API=true to print the raw API error body.");
+            }
         }
-        Err(e) => eprintln!("[ERR] - Request error: {}", e),
+        Err(e) => eprintln!(
+            "[ERR] - Request error after {:.1}s: {}",
+            api_request_started_at.elapsed().as_secs_f64(),
+            e
+        ),
     }
 }

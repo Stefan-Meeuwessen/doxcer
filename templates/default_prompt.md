@@ -8,10 +8,10 @@ Analyzeer deze code en schrijf in Markdown documentatie voor onze Azure DevOps W
 2. Zorg er voor dat de tabellen als markdown tabellen worden gegenereerd.
 3. Houd deze Markdown template aan:
 
-| ʕっ•ᴥ•ʔっ                    | **Details**             |
+| ʕっ•ᴥ•ʔっ                  | **Details**             |
 | -------------------------- | ----------------------- |
 | **Auteur**                 | Stefan-GPT              |
-| **Notebook naam**          | {Notebook bestandsnaam} |
+| **Script naam**          | {Code file bestandsnaam} |
 | **Datum aanmaak document** | {Huidige datum en tijd} |
 
 ---
@@ -92,5 +92,5 @@ flowchart LR
 Deze documentatie is automatisch gegenereerd op basis van de notebooklogica en dient als startpunt voor review door Data Engineering en BI. Eventuele aanvullingen, correcties of optimalisaties kunnen direct in deze Wiki worden doorgevoerd.
 
 <p align="center">
-🚀 <em>Samen zorgen we voor consistente, uitlegbare en onderhoudbare data-producten.</em>
+🚀 <em>Samen zorgen we voor consistente, uitlegbare en onderhoudbare code.</em>
 </p>

@@ -22,6 +22,7 @@ target
 
 # VSCode
 .vs
+.vscode
 
 # Virtual Enviornment (Python)
 .venv

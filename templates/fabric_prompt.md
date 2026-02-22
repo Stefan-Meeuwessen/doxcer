@@ -8,7 +8,7 @@ Analyseer deze Fabric (.py) Notebook en schrijf in Markdown documentatie voor on
 2. Zorg er voor dat de tabellen als markdown tabellen worden gegenereerd.
 3. Houd deze Markdown template aan:
 
-| ʕ•ᴥ•ʔ                    | **Details**             |
+| ʕ•ᴥ•ʔ                      | **Details**             |
 | -------------------------- | ----------------------- |
 | **Auteur**                 | Stefan-GPT              |
 | **Notebook naam**          | {Notebook bestandsnaam} |
@@ -18,7 +18,7 @@ Analyseer deze Fabric (.py) Notebook en schrijf in Markdown documentatie voor on
 ---
 
 # 📚 Functionele Notebook omschrijving
-{beschrijf hier duidelijk op een functionele manier wat deze code doet, met specifieke aandacht voor Fabric Lakehouse architectuur en medallion layers}
+{beschrijf hier duidelijk op een functionele manier wat deze Notebook doet, met specifieke aandacht voor Fabric Lakehouse architectuur en medallion layers}
 
 ---
 

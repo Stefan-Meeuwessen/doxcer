@@ -24,7 +24,7 @@ It:
 
 Notes:
 - Path and selector can be passed in any order.
-- Current implemented selectors are; ``-fabric``, ``-synapse``, ``-databricks``, ``-datafactory``, ``-aws`` and ``-powerbi``.
+- Current implemented selectors are; ``-fabric``, ``-synapse``, ``-databricks``, ``-datafactory``, ``-aws``, ``-pipeline`` and ``-powerbi``.
 
 
 ## Runtime Flow
@@ -123,6 +123,7 @@ It runs:
 - `cargo build --tests`
 - `cargo test`
 - `cargo build --release`
+- `cargo doc --workspace --all-features --document-private-items --target-dir target`
 
 Then it packages:
 - `target/release/doxcer.exe`
@@ -183,6 +184,7 @@ doxcer/
 │   ├── powerbi_prompt.md
 │   ├── aws_prompt.md
 │   ├── datafactory_prompt.md
+│   ├── pipeline_prompt.md
 │   └── context.md
 └── docs/
     └── newly-documented/
@@ -191,4 +193,4 @@ doxcer/
 
 ## Version
 - Cargo package version: `0.1.4`
-- Project version: 3.0.0
+- Project version: 3.0.1
